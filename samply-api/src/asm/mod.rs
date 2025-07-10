@@ -148,7 +148,61 @@ impl<'a, H: FileAndPathHelper> AsmApi<'a, H> {
                 CodeByteReadingError::FileIO(e) => AsmError::FileIO(e),
             })?;
 
-        decode_arch(bytes, architecture, rel_address, disassembly_len)
+        let response = decode_arch(bytes, architecture, rel_address, disassembly_len)?;
+
+        let mut extended_instructions = Vec::with_capacity(response.instructions.len());
+        let symbol_map = self.symbol_manager.load_symbol_map(&library_info).await?;
+        let max_inst_text_size = response.instructions.iter()
+            .map(|i| i.decoded_string_per_syntax.get(0).map(|s| s.len()).unwrap_or_default())
+            .max()
+            .unwrap_or_default();
+        let mut previous_path = String::new();
+        let mut previous_line = 0;
+        for instruction in response.instructions {
+            let inst_address = response.start_address + instruction.offset;
+            let augmented = symbol_map.lookup_sync(LookupAddress::Relative(inst_address)).as_ref()
+                .and_then(|sai| sai.frames.as_ref())
+                .and_then(|result| match result {
+                    samply_symbols::FramesLookupResult::Available(vec) => Some(vec),
+                    _ => None
+                })
+                .and_then(|vec| vec.first())
+                .and_then(|info| {
+                    match (instruction.decoded_string_per_syntax.first(), &info.file_path, info.line_number) {
+                        (Some(text), Some(sfp), Some(line)) => {
+                            let raw_path = sfp.raw_path();
+                            let location = if raw_path != previous_path || line != previous_line {
+                                previous_path = raw_path.to_string();
+                                previous_line = line;
+                                format!("{}:{}", raw_path, line)
+                            } else {
+                                "^".to_string()
+                            };
+                            Some(format!("{text:width$} # {location}", text=text, location=location, width=max_inst_text_size))
+                        }
+                        _ => None
+                    }
+                })
+                .map(|s| vec![s]);
+
+            if augmented.is_none() {
+                previous_path = String::new();
+                previous_line = 0;
+            }
+
+            extended_instructions.push(DecodedInstruction {
+                offset: instruction.offset,
+                decoded_string_per_syntax: augmented.or_else(|| Some(instruction.decoded_string_per_syntax)).unwrap()
+            });
+        }
+
+        return Ok(Response {
+            start_address: response.start_address,
+            size: response.size,
+            arch: response.arch,
+            syntax: response.syntax,
+            instructions: extended_instructions
+        })
     }
 
     async fn get_function_end_address(
