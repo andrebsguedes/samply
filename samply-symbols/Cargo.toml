@@ -56,6 +56,7 @@ nom = "7.1.1"
 zerocopy = "0.7"
 zerocopy-derive = "0.7"
 linux-perf-data = "0.9.0"
+fxprof-processed-profile = { version = "0.7", path = "../fxprof-processed-profile" }
 
 [dev-dependencies]
 memmap2 = "0.9.4"

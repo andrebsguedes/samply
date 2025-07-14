@@ -1,5 +1,5 @@
 use fxprof_processed_profile::{
-    CategoryHandle, CategoryPairHandle, LibMappings, MarkerDynamicField, MarkerFieldFormat,
+    CategoryHandle, CategoryPairHandle, LibMappings, LibraryInfo, MarkerDynamicField, MarkerFieldFormat,
     MarkerLocation, MarkerSchema, MarkerSchemaField, MarkerStaticField, MarkerTiming, Profile,
     ProfilerMarker, ThreadHandle, Timestamp,
 };
@@ -60,6 +60,21 @@ impl ProcessSampleData {
 
     pub fn is_empty(&self) -> bool {
         self.unresolved_samples.is_empty()
+    }
+
+    pub fn resolved_mappings(&self, profile: &mut Profile) -> LibMappings<LibraryInfo> {
+        let mut map = LibMappings::new();
+        let mut regular_iter = self.regular_lib_mapping_op_queue.clone().into_iter();
+        while let Some(op) = regular_iter.next_op_if_at_or_before(u64::max_value()) {
+            op.apply_to(&mut map);
+        }
+        for jit_queue in self.jitdump_lib_mapping_op_queues.iter() {
+            let mut jit_iter = jit_queue.clone().into_iter();
+            while let Some(op) = jit_iter.next_op_if_at_or_before(u64::max_value()) {
+                op.apply_to(&mut map);
+            }
+        }
+        profile.resolve_mappings(map.into_mapped(|info| info.lib_handle))
     }
 
     #[allow(clippy::too_many_arguments)]

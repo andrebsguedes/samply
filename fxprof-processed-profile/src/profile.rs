@@ -551,6 +551,10 @@ impl Profile {
         self.counters[counter.0].add_sample(timestamp, value_delta, number_of_operations_delta)
     }
 
+    pub fn resolve_mappings(&self, mappings: LibMappings<LibraryHandle>) -> LibMappings<LibraryInfo> {
+        mappings.into_mapped(|h| self.global_libs.fetch_lib(h).unwrap().clone())
+    }
+
     // frames is ordered from caller to callee, i.e. root function first, pc last
     fn stack_index_for_frames(
         &mut self,

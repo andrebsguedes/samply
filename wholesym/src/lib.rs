@@ -144,6 +144,6 @@ pub use samply_symbols::{
     AddressInfo, CodeId, ElfBuildId, Error, ExternalFileAddressInFileRef, ExternalFileAddressRef,
     ExternalFileRef, ExternalFileSymbolMap, FrameDebugInfo, FramesLookupResult, LibraryInfo,
     LookupAddress, MappedPath, MultiArchDisambiguator, PeCodeId, SourceFilePath, SymbolInfo,
-    SyncAddressInfo,
+    SyncAddressInfo, VMA_MAPPINGS
 };
 pub use symbol_manager::{SymbolFileOrigin, SymbolManager, SymbolMap};

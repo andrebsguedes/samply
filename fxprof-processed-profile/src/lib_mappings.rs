@@ -128,6 +128,36 @@ impl<T> LibMappings<T> {
         let relative_address = mapping.relative_address_at_start + offset_from_mapping_start;
         Some((relative_address, &mapping.value))
     }
+
+    pub fn into_mapped<F, R>(self, mut f: F) -> LibMappings<R>
+    where
+        F: FnMut(T) -> R
+    {
+        LibMappings {
+            map: self.map
+                .into_iter()
+                .map(|(k, v)| {
+                    let Mapping {
+                        start_avma,
+                        end_avma,
+                        relative_address_at_start,
+                        value
+                    } = v;
+
+                    let new_value = f(value);
+                    (
+                        k,
+                        Mapping {
+                            start_avma,
+                            end_avma,
+                            relative_address_at_start,
+                            value: new_value
+                        }
+                    )
+                })
+                .collect()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]

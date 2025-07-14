@@ -204,7 +204,7 @@
 //! }
 //! ```
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock, Mutex};
 
 use binary_image::BinaryImageInner;
 pub use debugid;
@@ -258,6 +258,26 @@ pub use crate::shared::{
     SyncAddressInfo,
 };
 pub use crate::symbol_map::SymbolMap;
+use fxprof_processed_profile::{LibMappings, LibraryInfo as ProfileLibraryInfo};
+
+pub static VMA_MAPPINGS: LazyLock<Mutex<LibMappings<ProfileLibraryInfo>>> = LazyLock::new(|| {
+    Mutex::new(LibMappings::new())
+});
+
+pub fn convert_address(address: u64) -> Option<(u32, LibraryInfo)> {
+    let locked = VMA_MAPPINGS.lock().unwrap();
+    let (rel_addr, prof_lib_info) = locked.convert_address(address)?;
+    let info = LibraryInfo {
+        name: Some(prof_lib_info.name.clone()),
+        path: Some(prof_lib_info.path.clone()),
+        debug_id: Some(prof_lib_info.debug_id),
+        debug_name: Some(prof_lib_info.debug_name.clone()),
+        debug_path: Some(prof_lib_info.debug_path.clone()),
+        code_id: None,
+        arch: prof_lib_info.arch.clone()
+    };
+    Some((rel_addr, info))
+}
 
 pub struct SymbolManager<H: FileAndPathHelper> {
     helper: Arc<H>,

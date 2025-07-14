@@ -1,5 +1,6 @@
 use framehop::Unwinder;
 use fxprof_processed_profile::{CategoryColor, Profile, Timestamp};
+use wholesym::VMA_MAPPINGS;
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -151,6 +152,11 @@ where
         let (process_sample_data, process_recycling_data) =
             process.finish(profile, jit_category_manager, timestamp_converter);
         if !process_sample_data.is_empty() {
+            {
+                let resolved_mappings = process_sample_data.resolved_mappings(profile);
+                let mut locked = VMA_MAPPINGS.lock().unwrap();
+                *locked = resolved_mappings;
+            }
             self.process_sample_datas.push(process_sample_data);
         }
 

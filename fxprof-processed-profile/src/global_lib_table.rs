@@ -52,6 +52,10 @@ impl GlobalLibTable {
         let handle = self.used_libs.get(index.0)?;
         self.all_libs.get(handle.0)
     }
+
+    pub fn fetch_lib(&self, handle: LibraryHandle) -> Option<&LibraryInfo> {
+        self.all_libs.get(handle.0)
+    }
 }
 
 impl Serialize for GlobalLibTable {
